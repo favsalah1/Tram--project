@@ -1,0 +1,191 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tram Project</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC7ypMx09dzG8b3Y7PLe8KmAsws25Vsegk&libraries=places" defer></script>
+</head>
+<body>
+  <div id="hello-screen" class="splash-screen">
+    <div class="splash-content">
+      <h1>Hello</h1>
+      <p>Welcome to the Tram Project!</p>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <header>
+    <div class="header-container">
+      <h1 id="title">Tram Project</h1>
+      <div class="language-selector">
+        <select id="language-select">
+          <option value="en">EN</option>
+          <option value="pl">PL</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2 id="route-info">Route Info</h2>
+      <ul id="route-list">
+        <li>
+          <label for="start-input">Start Location:</label>
+          <input list="startoption" type="text" id="start-input" placeholder="Enter start location">
+          <datalist id="startoption">
+            <option value="Dworzec Główny">
+            <option value="Plac Dominikański">
+            <option value="Plac Grunwaldzki">
+            <option value="Rynek">
+            <option value="Hala Targowa">
+            <option value="Plac Bema">
+            <option value="Plac Jana Pawła II">
+            <option value="Świdnicka">
+            <option value="Oławska">
+            <option value="Katedra">
+            <option value="Most Grunwaldzki">
+            <option value="Leśnica">
+            <option value="Psie Pole">
+            <option value="Brochów">
+            <option value="Oporów">
+            <option value="Nowy Dwór">
+            <option value="Popowice">
+            <option value="Pilczyce">
+            <option value="Osobowice">
+            <option value="Grabiszynek">
+            <option value="Stadion Wrocław">
+            <option value="Politechnika">
+            <option value="Plac Staszica">
+            <option value="Sępolno">
+            <option value="Biskupin">
+            <option value="Kozanów">
+          </datalist>
+        </li>
+        <li id="start">Start: Not set</li>
+
+        <li>
+          <label for="end-input">End Location:</label>
+          <input list="endoption" type="text" id="end-input" placeholder="Enter end location">
+          <datalist id="endoption">
+            <option value="Dworzec Główny">
+            <option value="Plac Dominikański">
+            <option value="Plac Grunwaldzki">
+            <option value="Rynek">
+            <option value="Hala Targowa">
+            <option value="Plac Bema">
+            <option value="Plac Jana Pawła II">
+            <option value="Świdnicka">
+            <option value="Oławska">
+            <option value="Katedra">
+            <option value="Most Grunwaldzki">
+            <option value="Leśnica">
+            <option value="Psie Pole">
+            <option value="Brochów">
+            <option value="Oporów">
+            <option value="Nowy Dwór">
+            <option value="Popowice">
+            <option value="Pilczyce">
+            <option value="Osobowice">
+            <option value="Grabiszynek">
+            <option value="Stadion Wrocław">
+            <option value="Politechnika">
+            <option value="Plac Staszica">
+            <option value="Sępolno">
+            <option value="Biskupin">
+            <option value="Kozanów">
+          </datalist>
+        </li>
+        <li id="end">End: Not set</li>
+
+        <li id="travel-time-display">
+          <label>Travel Time:</label>
+          <span id="travel-time">Travel Time: Not set</span>
+        </li>
+      </ul>
+
+      <div id="location-section" class="location-section">
+        <h3 id="user-location-label">Your Location</h3>
+        <p id="user-location">Detecting...</p>
+        <button id="detect-location-btn" class="btn map-btn">Detect Location</button>
+      </div>
+
+      <div id="route-section" class="route-section">
+        <h3 id="route-label">Set Route</h3>
+        <button id="input-btn" class="btn input-btn hidden">Input</button>
+      </div>
+
+      <button id="toggle-map-btn" class="btn map-btn">Show Route Map</button>
+      <div id="map-container" class="map-container hidden">
+        <div id="map" style="height: 300px;"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2 id="tram-simulation">Tram Simulation</h2>
+      <div class="tram-container">
+        <div class="tram-track">
+          <div class="tram">
+            <span class="tram-icon">🚋</span>
+          </div>
+        </div>
+        <div class="tram-info">
+          <p id="travel-time-simulation">Travel Time: 00:00</p>
+        </div>
+        <div class="tram-buttons">
+          <button class="btn start-btn" onclick="startTram()">Start Tram</button>
+          <button class="btn stop-btn" onclick="stopTram()">Stop Tram</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2025 Tram Project. All rights reserved.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
